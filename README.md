@@ -1,3 +1,9 @@
+клонируйте репозиторий:
+```
+git clone https://github.com/SubMonitor/api.git
+cd api
+```
+
 создайте .env с:
 ```
 SECRET_KEY = <укажите ключ для jwt>
