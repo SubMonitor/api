@@ -35,7 +35,7 @@ class Auth:
             raise ValueError("неверные логин или пароль")
 
         token_data = {
-            "sub": user.id
+            "sub": str(user.id)
         }
         access_token = create_access_token(data=token_data, expires_delta=timedelta(minutes=config.access_token_expire_minutes))
 

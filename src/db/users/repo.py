@@ -8,11 +8,11 @@ class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_id(self, user_id: int):
+    async def get_by_id(self, user_id: int) -> User:
         result = await self.session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def get_by_email(self, email: str):
+    async def get_by_email(self, email: str) -> User:
         result = await self.session.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
@@ -40,7 +40,7 @@ class UserRepository:
     async def delete(self, user_id: int) -> bool:
         user = await self.get_by_id(user_id)
         if user:
-            user.is_active = False  # Soft delete
+            await self.session.delete(user)
             await self.session.flush()
             return True
         return False

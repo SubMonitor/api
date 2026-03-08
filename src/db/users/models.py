@@ -1,11 +1,15 @@
+from typing import List
+
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.sql import func
 import enum
 
-class Base(DeclarativeBase):
-    pass
+import src
+from src.db.base import Base
+from src.db.subs.models import Subscription
+
 
 class User(Base):
     __tablename__ = "users"
@@ -23,6 +27,7 @@ class User(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
+    subscriptions: Mapped[List["Subscription"]] = relationship("Subscription", back_populates="user", cascade="all, delete-orphan")
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     def __repr__(self) -> str:
