@@ -22,6 +22,8 @@ class User(Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String(100))
 
+    email_accounts: Mapped[List["EmailAccount"]] = relationship("EmailAccount", back_populates="user", cascade="all, delete-orphan")
+
     # is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

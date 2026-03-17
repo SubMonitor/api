@@ -36,5 +36,17 @@ class Config(BaseSettings):
     # def redis_url(self) -> str:
     #     return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
-config = Config()
+class TestConfig(Config):
+    model_config = SettingsConfigDict(env_file=".env.test", env_file_encoding="utf-8")
+
+def get_config(env: str = "prod") -> Config:
+    configs_classes = {
+        # "dev": DevelopmentConfig,
+        "prod": Config,
+        "test": TestConfig,
+    }
+
+    return configs_classes[env]()
+
+config = get_config()
 
