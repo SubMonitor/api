@@ -28,6 +28,9 @@ class EmailAccountInfo(BaseModel):
     last_error: Optional[str] = None
     created_at: datetime
 
+    class Config:
+        from_attributes = True
+
 class EmailAccountsResponse(BaseModel):
     accounts: List[EmailAccountInfo]
 

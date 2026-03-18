@@ -1,4 +1,4 @@
-from src.api.email import api_email_router
+from src.api.email import *
 from src.api.root import *
 from src.api.auth import *
 from src.api.me import *

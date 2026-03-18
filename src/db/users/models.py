@@ -9,7 +9,7 @@ import enum
 import src
 from src.db.base import Base
 from src.db.subs.models import Subscription
-
+from src.db.email.models import EmailAccount
 
 class User(Base):
     __tablename__ = "users"

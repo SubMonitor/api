@@ -5,6 +5,7 @@ from typing import List
 from src.api.deps import get_current_user
 from src.api.email import api_email_router
 from src.db import get_db
+from src.db.subs.schemas import SubscriptionAdd
 from src.db.users.models import User
 from src.db.email.repo import EmailRepository
 from src.db.email.schemas import (
@@ -194,6 +195,40 @@ async def get_email_detail(
     """
     Получить конкретное письмо по UID
     Возвращает полное содержимое письма
+    """
+    repo = EmailRepository(db)
+    service = EmailService(repo)
+
+    success, message, email_data = await service.get_email_detail(
+        user_id=current_user.id,
+        account_id=account_id,
+        uid=uid,
+        folder=folder
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+
+    return {
+        "success": True,
+        "message": message,
+        "email": email_data
+    }
+
+@api_email_router.get("/accounts/{account_id}/emails/{uid}/parse", response_model=SubscriptionAdd)
+async def get_email_detail(
+        account_id: int,
+        uid: str,
+        folder: str = 'INBOX',
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """
+    Парсит конкретное число по UID в подписку
+    Возвращает подписку
     """
     repo = EmailRepository(db)
     service = EmailService(repo)

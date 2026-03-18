@@ -9,8 +9,15 @@ class EmailService:
     def __init__(self, repo: EmailRepository):
         self.repo = repo
 
-    async def connect_email(self, user_id: int, email: str, password: str, server_key: str, custom_host: Optional[str] = None, custom_port: int = 993) -> Tuple[bool, str, Optional[int]]:
-        """Подключить почту пользователя"""
+    async def connect_email(
+            self,
+            user_id: int,
+            email: str,
+            password: str,
+            server_key: str,
+            custom_host: Optional[str] = None,
+            custom_port: int = 993
+    ) -> Tuple[bool, str, Optional[int]]:
         # Проверяем подключение
         success, message = await imap_client.test_connection(
             email=email,
@@ -19,21 +26,36 @@ class EmailService:
             custom_host=custom_host,
             custom_port=custom_port
         )
-
         if not success:
             return False, message, None
 
-        # Сохраняем в БД
-        account = await self.repo.create(
-            user_id=user_id,
-            data={'email':email,
-            'password':password,
-            'server_key':server_key,
-            'custom_host':custom_host,
-            'custom_port':custom_port}
-        )
+        # Ищем существующее подключение
+        existing = await self.repo.get_by_email(user_id, email)
+        if existing:
+            # Обновляем: пароль, сервер, сбрасываем ошибку, активируем
+            await self.repo.update(
+                existing.id,
+                user_id,
+                password=password,
+                server_key=server_key,
+                custom_host=custom_host,
+                custom_port=custom_port,
+                is_active=True,
+                last_error=None
+            )
+            return True, "Почта обновлена", existing.id
+        else:
+            # Создаём новое
+            account = await self.repo.create(
+                user_id=user_id,
+                data={"email":email,
+                "password":password,
+                "server_key":server_key,
+                "custom_host":custom_host,
+                "custom_port":custom_port}
+            )
+            return True, "Почта подключена", account.id
 
-        return True, "Почта успешно подключена", account.id
 
     async def disconnect_email(self, user_id: int, account_id: int) -> Tuple[bool, str]:
         """Отключить почту"""
@@ -89,19 +111,21 @@ class EmailService:
             self,
             user_id: int,
             account_id: int
-    ) -> tuple[bool, str, list[Any]] | tuple[bool, list[str], str]:
-        """Получить список папок"""
+    ) -> Tuple[bool, str, List[str]]:
         account = await self.repo.get_by_id(account_id, user_id)
         if not account:
             return False, "Подключение не найдено", []
 
-        return await imap_client.get_folders(
+        # imap_client.get_folders возвращает (success, folders, message)
+        success, folders, message = await imap_client.get_folders(
             email=account.email,
             password=account.password,
             server_key=account.server_key,
             custom_host=account.custom_host,
             custom_port=account.custom_port
         )
+        # Возвращаем (success, message, folders) как ожидает эндпоинт
+        return success, message, folders
 
     async def get_email_detail(
             self,

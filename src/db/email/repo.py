@@ -90,3 +90,26 @@ class EmailRepository:
         )
         result = await self.session.execute(query)
         return result.scalars().all()
+
+    async def get_by_email(self, user_id: int, email: str) -> Optional[EmailAccount]:
+        """Получить подключение по email пользователя"""
+        query = select(EmailAccount).where(
+            EmailAccount.user_id == user_id,
+            EmailAccount.email == email
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def update(self, account_id: int, user_id: int, **kwargs) -> bool:
+        """Обновить существующее подключение"""
+        query = (
+            update(EmailAccount)
+            .where(
+                EmailAccount.id == account_id,
+                EmailAccount.user_id == user_id
+            )
+            .values(**kwargs)
+        )
+        result = await self.session.execute(query)
+        await self.session.commit()
+        return result.rowcount > 0
