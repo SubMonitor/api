@@ -1,9 +1,13 @@
+import json
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
+import src.services.html_to_md
 from src.api.deps import get_current_user
 from src.api.email import api_email_router
+from src.core import get_logger
 from src.db import get_db
 from src.db.subs.schemas import SubscriptionAdd
 from src.db.users.models import User
@@ -20,6 +24,7 @@ from src.db.email.schemas import (
 )
 from src.services.email import EmailService
 from src.services.imap_client import get_supported_servers, get_keyword_stats
+from src.services.yandex_gpt import llp_sub_parsing
 
 
 @api_email_router.get("/servers", response_model=EmailServersResponse)
@@ -199,7 +204,7 @@ async def get_email_detail(
     repo = EmailRepository(db)
     service = EmailService(repo)
 
-    success, message, email_data = await service.get_email_detail(
+    success, email_data, message = await service.get_email_detail(
         user_id=current_user.id,
         account_id=account_id,
         uid=uid,
@@ -233,7 +238,7 @@ async def get_email_detail(
     repo = EmailRepository(db)
     service = EmailService(repo)
 
-    success, message, email_data = await service.get_email_detail(
+    success, email_data, message = await service.get_email_detail(
         user_id=current_user.id,
         account_id=account_id,
         uid=uid,
@@ -246,8 +251,9 @@ async def get_email_detail(
             detail=message
         )
 
-    return {
-        "success": True,
-        "message": message,
-        "email": email_data
-    }
+    text = email_data["text"]+src.services.html_to_md.converter.handle(email_data["html"])
+    llm_answer = llp_sub_parsing(text)
+    clean_json_from_answer = llm_answer.replace('json\n', '', 1).replace("```", "")
+    sub = SubscriptionAdd(**json.loads(clean_json_from_answer))
+
+    return sub

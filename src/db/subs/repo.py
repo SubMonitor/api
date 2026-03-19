@@ -89,3 +89,24 @@ class SubscriptionRepository:
         result = await self.session.execute(select(Subscription).where(Subscription.user_id == user_id).where(Subscription.is_active == True))
         subscriptions = result.scalars().all()
         return [SubscriptionResponse.model_validate(sub) for sub in subscriptions]
+
+    async def get_categories(self, user_id: int):
+        stmt = (
+            select(Subscription.category)
+            .where(Subscription.user_id == user_id)
+            .distinct()
+            .order_by(Subscription.category)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_by_category(self, user_id: int, category: str, offset: int = 0, limit: int = 100):
+        stmt = (
+            select(Subscription)
+            .where(Subscription.user_id == user_id, Subscription.category == category)
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        subscriptions = result.scalars().all()
+        return [SubscriptionResponse.model_validate(sub) for sub in subscriptions]

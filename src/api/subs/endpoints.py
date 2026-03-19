@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -56,3 +56,26 @@ async def delete_sub(sub_id: int, current_user: User = Depends(get_current_user)
 async def set_active(sub_id: int, status: bool, current_user: User = Depends(get_current_user),  db: AsyncSession = Depends(get_db)):
     repo = SubscriptionRepository(db)
     return await repo.set_active(sub_id, status)
+
+@api_subs_router.get("/categories", response_model=List[str])
+async def get_categories(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Получить все уникальные категории подписок текущего пользователя.
+    """
+    repo = SubscriptionRepository(db)
+    categories = await repo.get_categories(current_user.id)
+    return categories
+
+
+@api_subs_router.get("/by-category/{category}", response_model=List[SubscriptionResponse])
+async def get_subscriptions_by_category(category: str, offset: int = Query(0, ge=0, description="Смещение для пагинации"), limit: int = Query(100, ge=1, le=1000, description="Количество записей"), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Получить подписки текущего пользователя в указанной категории с пагинацией.
+    """
+    repo = SubscriptionRepository(db)
+    subs = await repo.get_by_category(current_user.id, category, offset=offset, limit=limit)
+    if not subs and offset == 0:
+        categories = await repo.get_categories(current_user.id)
+        if category not in categories:
+            raise HTTPException(status_code=404, detail="Category not found")
+    return subs

@@ -6,4 +6,4 @@ from src.db import get_db
 from src.db.users.models import User
 
 api_auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")

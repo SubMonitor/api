@@ -31,6 +31,9 @@ class Subscription(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="subscriptions")
 
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    comment: Mapped[str] = mapped_column(String(150), nullable=True)
+
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     @validates("billing_cycle")

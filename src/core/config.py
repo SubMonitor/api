@@ -24,6 +24,11 @@ class Config(BaseSettings):
     db_pass: str = "postgres"
     db_name: str = "db"
 
+    yandex_gpt_api_key: str
+    yandex_gpt_api_base_url: str = "https://ai.api.cloud.yandex.net/v1"
+    yandex_gpt_api_project: str
+    yandex_gpt_api_prompt_id: str
+
     # redis_host: str = "redis"
     # redis_port: int = 6379
     # redis_db: int = 0

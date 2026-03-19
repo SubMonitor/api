@@ -33,6 +33,8 @@ class SubscriptionAdd(BaseModel):
     billing_cycle: Period = Period.month
     payment_date: datetime
     is_next_date: bool = False
+    category: str
+    comment: str = ""
 
 
 
@@ -48,6 +50,8 @@ class SubscriptionResponse(BaseModel):
     billing_cycle: Period = Period.month
     last_payment_date: Optional[datetime] = None
     next_payment_date: datetime
+    category: str
+    comment: str
     is_active: bool
     created_at: datetime
 
