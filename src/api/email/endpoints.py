@@ -1,6 +1,8 @@
 import json
+from json import JSONDecodeError
 
 from fastapi import Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -25,6 +27,45 @@ from src.db.email.schemas import (
 from src.services.email import EmailService
 from src.services.imap_client import get_supported_servers, get_keyword_stats
 from src.services.yandex_gpt import llp_sub_parsing
+
+logger = get_logger(__name__)
+
+
+def _extract_json_payload(answer: str) -> dict:
+    cleaned_answer = (answer or "").strip()
+    if cleaned_answer.startswith("```"):
+        lines = cleaned_answer.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        cleaned_answer = "\n".join(lines).strip()
+
+    if cleaned_answer.lower().startswith("json"):
+        cleaned_answer = cleaned_answer[4:].lstrip()
+
+    try:
+        payload = json.loads(cleaned_answer)
+    except JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Не удалось распознать письмо как подписку."
+        ) from exc
+
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Не удалось распознать письмо как подписку."
+        )
+
+    error_message = payload.get("error")
+    if error_message:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error_message)
+        )
+
+    return payload
 
 
 @api_email_router.get("/servers", response_model=EmailServersResponse)
@@ -224,7 +265,7 @@ async def get_email_detail(
     }
 
 @api_email_router.get("/accounts/{account_id}/emails/{uid}/parse", response_model=SubscriptionAdd)
-async def get_email_detail(
+async def parse_email_detail(
         account_id: int,
         uid: str,
         folder: str = 'INBOX',
@@ -251,9 +292,19 @@ async def get_email_detail(
             detail=message
         )
 
-    text = email_data["text"]+src.services.html_to_md.converter.handle(email_data["html"])
+    plain_text = email_data.get("text") or ""
+    html_text = src.services.html_to_md.converter.handle(email_data.get("html") or "")
+    text = plain_text + html_text
     llm_answer = llp_sub_parsing(text)
-    clean_json_from_answer = llm_answer.replace('json\n', '', 1).replace("```", "")
-    sub = SubscriptionAdd(**json.loads(clean_json_from_answer))
+
+    try:
+        payload = _extract_json_payload(llm_answer)
+        sub = SubscriptionAdd.model_validate(payload)
+    except ValidationError as exc:
+        logger.warning("Failed to validate parsed subscription payload: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Не удалось распознать письмо как подписку."
+        ) from exc
 
     return sub
